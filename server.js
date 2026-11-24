@@ -22,7 +22,10 @@ const MIME_TYPES = {
 const CARD_PATIENT_MAPPING = {
   // Add your physical RFID card UIDs here (in uppercase HEX without spaces)
   "DEFAULT": "PAT-2026-001",
-  "P001": "PAT-2026-001"
+  "P001": "PAT-2026-001",
+  "P002": "PAT-2026-002",
+  "P003": "PAT-2026-003",
+  "P004": "PAT-2026-004"
 };
 
 // HTTP Static File Server & Simple API

@@ -1,0 +1,13 @@
+{
+  "name": "hms-flow-prototype",
+  "version": "1.0.0",
+  "description": "4-Screen Clinical Patient Lookup & Record Web App Prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["hms", "patient-portal", "prototype"],
+  "author": "",
+  "license": "MIT"
+}

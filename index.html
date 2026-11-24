@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PulseCare Health - Clinical Patient Portal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a'
+            },
+            clinical: {
+              teal: '#0d9488',
+              slate: '#0f172a',
+              card: '#ffffff'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Offline fallback & smooth UI enhancements */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      color: #1e293b;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    }
+    .pin-digit-input {
+      font-family: monospace;
+      letter-spacing: 0.3em;
+      text-align: center;
+    }
+    .badge-pulse {
+      animation: pulse-light 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-light {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+    /* Smooth transitions between screens */
+    .screen-fade {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4"></path>
+          </svg>
+        </div>
+        <div>
+          <span class="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
+            PulseCare <span class="text-xs px-2 py-0.5 font-semibold bg-blue-100 text-blue-700 rounded-full">HMS</span>
+          </span>
+          <p class="text-xs text-slate-500 hidden sm:block">Hospital Information & Clinical Record System</p>
+        </div>
+      </div>
+
+      <!-- User status indicator (shown when logged in) -->
+      <div id="header-user-status" class="hidden flex items-center space-x-3">
+        <div class="flex items-center space-x-2 text-sm text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 badge-pulse"></span>
+          <span class="font-medium text-slate-800">iron_man</span>
+          <span class="text-xs text-slate-400">| Provider</span>
+        </div>
+        <button onclick="handleLogout()" class="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-md font-medium transition-colors border border-transparent hover:border-rose-200">
+          Sign out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flow Progress Stepper -->
+  <div class="max-w-4xl mx-auto w-full px-4 pt-6 pb-2">
+    <div class="bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-sm mb-4">
+      <div class="flex items-center justify-between relative">
+        <!-- Progress Bar Background Line -->
+        <div class="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-200 -z-0"></div>
+        <div id="stepper-progress-fill" class="absolute left-6 top-1/2 -translate-y-1/2 h-1 bg-blue-600 transition-all duration-300 -z-0" style="width: 0%;"></div>
+
+        <!-- Step 1 -->
+        <div id="step-node-1" class="flex flex-col items-center relative z-10">
+          <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white ring-4 ring-blue-100 transition-all">
+            1
+          </div>
+          <span class="step-label text-xs font-semibold text-blue-700 mt-1.5">1. Login</span>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step-node-2" class="flex flex-col items-center relative z-10">
+          <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white text-slate-400 border-2 border-slate-300 transition-all">
+            2
+          </div>
+          <span class="step-label text-xs font-medium text-slate-400 mt-1.5">2. Scan/Lookup</span>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step-node-3" class="flex flex-col items-center relative z-10">
+          <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white text-slate-400 border-2 border-slate-300 transition-all">
+            3
+          </div>
+          <span class="step-label text-xs font-medium text-slate-400 mt-1.5">3. Consent Gate</span>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step-node-4" class="flex flex-col items-center relative z-10">
+          <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white text-slate-400 border-2 border-slate-300 transition-all">
+            4
+          </div>
+          <span class="step-label text-xs font-medium text-slate-400 mt-1.5">4. Patient Record</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Container for Dynamic Screens -->
+  <main class="flex-grow flex items-center justify-center px-4 py-4 sm:py-8">
+    <div id="screen-container" class="w-full max-w-4xl">
+      <!-- Dynamic Screen Content Rendered by JS -->
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-200 bg-white/70 py-4 text-center text-xs text-slate-500">
+    <p>PulseCare Health Information System &bull; Frontend Single Flow Prototype &bull; No Backend Required</p>
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    // Hardcoded Mock Data & Credentials
+    const MOCK_CONFIG = {
+      auth: {
+        username: "iron_man",
+        password: "1234"
+      },
+      patientId: "P001",
+      consentPin: "1234",
+      patientRecord: {
+        id: "P001",
+        name: "Anthony Edward Stark",
+        preferredName: "Tony Stark",
+        age: "48 years",
+        dob: "May 29, 1978",
+        gender: "Male",
+        bloodGroup: "O+",
+        photoBadge: "TS",
+        contact: {
+          phone: "+1 (555) 839-2810",
+          emergency: "Pepper Potts (Spouse) - +1 (555) 839-2811",
+          address: "10880 Malibu Point, Malibu, CA 90265"
+        },
+        allergies: [
+          { name: "Penicillin", severity: "Severe (High Alert)", reaction: "Anaphylaxis & severe angioedema", badge: "bg-rose-100 text-rose-800 border-rose-300" },
+          { name: "Sulfa Antibiotics", severity: "Moderate", reaction: "Generalized urticaria & pruritus", badge: "bg-amber-100 text-amber-800 border-amber-300" },
+          { name: "Radiocontrast Dye", severity: "Mild", reaction: "Flushing, nausea & mild hives", badge: "bg-yellow-100 text-yellow-800 border-yellow-300" }
+        ],
+        chronicConditions: [
+          { condition: "Essential Hypertension", diagnosedYear: "2019", status: "Managed (Stage 1)", note: "Monitored on ACE inhibitor" },
+          { condition: "Cardiac Arrhythmia", diagnosedYear: "2012", status: "Monitored / Stable", note: "Post-thoracic implant follow-up" },
+          { condition: "Mild Obstructive Sleep Apnea", diagnosedYear: "2021", status: "Controlled", note: "CPAP compliance high (>90%)" }
+        ],
+        currentVitals: [
+          { name: "Blood Pressure", value: "118/76", unit: "mmHg", status: "Normal", color: "emerald", icon: "activity" },
+          { name: "Heart Rate", value: "72", unit: "bpm", status: "Normal Sinus", color: "emerald", icon: "heart" },
+          { name: "Oxygen Saturation", value: "99%", unit: "SpO2", status: "Optimal", color: "emerald", icon: "droplet" },
+          { name: "Body Temperature", value: "98.6°F", unit: "(37.0°C)", status: "Afebrile", color: "emerald", icon: "thermometer" },
+          { name: "Respiratory Rate", value: "16", unit: "breaths/min", status: "Normal", color: "emerald", icon: "wind" },
+          { name: "Blood Glucose", value: "94", unit: "mg/dL", status: "Fasting Normal", color: "emerald", icon: "pulse" }
+        ],
+        visitHistory: [
+          {
+            date: "Nov 12, 2026",
+            department: "Cardiology",
+            doctor: "Dr. Bruce Banner, MD",
+            diagnosis: "Quarterly Cardiac Evaluation & Stress ECG",
+            notes: "Resting ECG confirmed normal sinus rhythm. Ejection fraction 62%. Good tolerance to physical activity. Blood pressure well managed.",
+            rx: "Lisinopril 10mg PO QD, CoQ10 100mg",
+            status: "Completed"
+          },
+          {
+            date: "Aug 04, 2026",
+            department: "Internal Medicine",
+            doctor: "Dr. Stephen Strange, MD",
+            diagnosis: "Annual Comprehensive Executive Health Exam",
+            notes: "Complete metabolic panel, lipid panel, and renal biomarkers all within optimal physiological reference ranges.",
+            rx: "Standard daily multivitamin",
+            status: "Completed"
+          },
+          {
+            date: "Mar 19, 2026",
+            department: "Pulmonology & Urgent Care",
+            doctor: "Dr. Christine Palmer, MD",
+            diagnosis: "Acute Bronchial Cough & Mild Dyspnea",
+            notes: "Chest radiographs negative for infiltrates. Resolved viral upper respiratory episode with reactive airway response.",
+            rx: "Albuterol sulfate HFA inhaler (course completed)",
+            status: "Resolved"
+          },
+          {
+            date: "Nov 15, 2025",
+            department: "Orthopedic Surgery & Sports Medicine",
+            doctor: "Dr. Helen Cho, MD",
+            diagnosis: "Left Acromioclavicular Joint Strain",
+            notes: "Soft tissue ultrasound demonstrated Grade 1 acromioclavicular ligament strain. Successfully rehabilitated through physical therapy.",
+            rx: "Targeted physical therapy protocol",
+            status: "Resolved"
+          }
+        ]
+      }
+    };
+
+    // Application In-Memory State
+    const state = {
+      currentScreen: 'login', // 'login' | 'lookup' | 'consent' | 'happy'
+      user: null,
+      patientIdInput: '',
+      validatedPatientId: null,
+      pinInput: '',
+      errors: {
+        login: '',
+        lookup: '',
+        consent: ''
+      }
+    };
+
+    // Helper: Update Top Stepper Visualization
+    function updateStepper() {
+      const stepNodes = [1, 2, 3, 4];
+      const screenIndexMap = {
+        'login': 1,
+        'lookup': 2,
+        'consent': 3,
+        'happy': 4
+      };
+      const activeStep = screenIndexMap[state.currentScreen] || 1;
+
+      // Update progress fill line
+      const progressPercentage = ((activeStep - 1) / 3) * 100;
+      const progressFill = document.getElementById('stepper-progress-fill');
+      if (progressFill) {
+        progressFill.style.width = `${progressPercentage}%`;
+      }
+
+      // Update Header user status badge
+      const headerUser = document.getElementById('header-user-status');
+      if (headerUser) {
+        if (state.user) {
+          headerUser.classList.remove('hidden');
+        } else {
+          headerUser.classList.add('hidden');
+        }
+      }
+
+      stepNodes.forEach((step) => {
+        const node = document.getElementById(`step-node-${step}`);
+        if (!node) return;
+        const indicator = node.querySelector('.step-indicator');
+        const label = node.querySelector('.step-label');
+
+        if (step < activeStep) {
+          // Completed step
+          indicator.className = 'step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100 transition-all';
+          indicator.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
+          label.className = 'step-label text-xs font-semibold text-emerald-700 mt-1.5';
+        } else if (step === activeStep) {
+          // Current active step
+          indicator.className = 'step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white ring-4 ring-blue-100 transition-all shadow-md';
+          indicator.textContent = step;
+          label.className = 'step-label text-xs font-bold text-blue-700 mt-1.5';
+        } else {
+          // Pending step
+          indicator.className = 'step-indicator w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white text-slate-400 border-2 border-slate-300 transition-all';
+          indicator.textContent = step;
+          label.className = 'step-label text-xs font-medium text-slate-400 mt-1.5';
+        }
+      });
+    }
+
+    // SVG Icons Helper
+    function getSvgIcon(name, classes = "w-5 h-5") {
+      switch (name) {
+        case 'lock':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>`;
+        case 'user':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`;
+        case 'search':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>`;
+        case 'key':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>`;
+        case 'shield-check':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`;
+        case 'activity':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+        case 'heart':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
+        case 'thermometer':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`;
+        case 'droplet':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`;
+        case 'wind':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+        case 'pulse':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+        case 'alert':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+        case 'check':
+          return `<svg class="${classes}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+        default:
+          return '';
+      }
+    }
+
+    // --- SCREEN 1: LOGIN ---
+    function renderLoginScreen() {
+      const errorHtml = state.errors.login ? `
+        <div class="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm flex items-start space-x-2.5 animate-bounce-subtle">
+          <div class="flex-shrink-0 mt-0.5 text-rose-600">${getSvgIcon('alert', 'w-4 h-4')}</div>
+          <div>
+            <p class="font-medium">${state.errors.login}</p>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="max-w-md mx-auto screen-fade">
+          <div class="glass-card rounded-2xl p-6 sm:p-8">
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-blue-100">
+                ${getSvgIcon('user', 'w-7 h-7 text-blue-600')}
+              </div>
+              <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Staff Provider Login</h2>
+              <p class="text-sm text-slate-500 mt-1">Authenticate to access the clinical record lookup</p>
+            </div>
+
+            <!-- Demo Hint Pill -->
+            <div class="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+              <div class="flex items-center space-x-2">
+                <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 font-semibold rounded">Demo</span>
+                <span>User: <strong class="font-mono text-slate-900">iron_man</strong> &bull; Pass: <strong class="font-mono text-slate-900">1234</strong></span>
+              </div>
+              <button type="button" onclick="autoFillLogin()" class="text-blue-600 font-semibold hover:text-blue-800 hover:underline">
+                Auto-fill
+              </button>
+            </div>
+
+            ${errorHtml}
+
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+              <div>
+                <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Username</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    ${getSvgIcon('user', 'w-4 h-4')}
+                  </div>
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    required
+                    placeholder="Enter username (e.g. iron_man)"
+                    class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Password</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    ${getSvgIcon('lock', 'w-4 h-4')}
+                  </div>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                    placeholder="Enter password (e.g. 1234)"
+                    class="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                  />
+                  <button type="button" onclick="togglePasswordVisibility('password')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button
+                  type="submit"
+                  class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl text-sm shadow-md shadow-blue-500/25 transition-all transform active:scale-[0.99] flex items-center justify-center space-x-2"
+                >
+                  <span>Authenticate & Continue</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- SCREEN 2: SCAN / LOOKUP ---
+    function renderLookupScreen() {
+      const errorHtml = state.errors.lookup ? `
+        <div class="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm flex items-start space-x-2.5">
+          <div class="flex-shrink-0 mt-0.5 text-rose-600">${getSvgIcon('alert', 'w-4 h-4')}</div>
+          <div>
+            <p class="font-medium">${state.errors.lookup}</p>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="max-w-md mx-auto screen-fade">
+          <div class="glass-card rounded-2xl p-6 sm:p-8">
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-teal-100">
+                ${getSvgIcon('search', 'w-7 h-7 text-teal-600')}
+              </div>
+              <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Patient Identification</h2>
+              <p class="text-sm text-slate-500 mt-1">Scan wristband or input patient identification code</p>
+            </div>
+
+            <!-- Demo Hint Pill -->
+            <div class="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+              <div class="flex items-center space-x-2">
+                <span class="px-1.5 py-0.5 bg-teal-100 text-teal-800 font-semibold rounded">Valid Patient ID</span>
+                <span class="font-mono text-slate-900 font-bold">P001</span>
+              </div>
+              <button type="button" onclick="autoFillPatientId()" class="text-teal-600 font-semibold hover:text-teal-800 hover:underline">
+                Use P001
+              </button>
+            </div>
+
+            ${errorHtml}
+
+            <form id="lookup-form" onsubmit="handleLookupSubmit(event)" class="space-y-4">
+              <div>
+                <label for="patientId" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Patient ID / Medical Record Number</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <span class="font-mono font-bold text-xs text-slate-400">#</span>
+                  </div>
+                  <input
+                    type="text"
+                    id="patientId"
+                    name="patientId"
+                    value="${state.patientIdInput || ''}"
+                    required
+                    placeholder="e.g. P001"
+                    class="w-full pl-9 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 font-mono text-base font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all shadow-sm"
+                  />
+                </div>
+                <p class="text-xs text-slate-400 mt-1.5">Accepts standard hospital identifier formatted as P001</p>
+              </div>
+
+              <div class="pt-2 space-y-2">
+                <button
+                  type="submit"
+                  class="w-full py-3 px-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-semibold rounded-xl text-sm shadow-md shadow-teal-500/25 transition-all transform active:scale-[0.99] flex items-center justify-center space-x-2"
+                >
+                  ${getSvgIcon('search', 'w-4 h-4')}
+                  <span>Look up Patient</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="simulateScan()"
+                  class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition-colors flex items-center justify-center space-x-2 border border-slate-200"
+                >
+                  <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                  <span>Simulate Barcode / QR Scan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- SCREEN 3: CONSENT GATE ---
+    function renderConsentScreen() {
+      const errorHtml = state.errors.consent ? `
+        <div class="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm flex items-start space-x-2.5 animate-shake">
+          <div class="flex-shrink-0 mt-0.5 text-rose-600">${getSvgIcon('alert', 'w-4 h-4')}</div>
+          <div>
+            <p class="font-medium">${state.errors.consent}</p>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="max-w-md mx-auto screen-fade">
+          <div class="glass-card rounded-2xl p-6 sm:p-8">
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-indigo-100">
+                ${getSvgIcon('shield-check', 'w-7 h-7 text-indigo-600')}
+              </div>
+              <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Patient Consent Gate</h2>
+              <p class="text-sm text-slate-500 mt-1">Authorized consent verification for Patient <span class="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">${state.validatedPatientId || 'P001'}</span></p>
+            </div>
+
+            <!-- Notice card -->
+            <div class="mb-5 p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs text-indigo-900 flex items-start space-x-2">
+              <div class="text-indigo-600 mt-0.5">${getSvgIcon('key', 'w-4 h-4')}</div>
+              <p>In accordance with health privacy regulations, enter the patient's 4-digit authorization consent PIN to release clinical telemetry and medical records.</p>
+            </div>
+
+            <!-- Demo Hint Pill -->
+            <div class="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+              <div class="flex items-center space-x-2">
+                <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 font-semibold rounded">Demo PIN</span>
+                <span class="font-mono text-slate-900 font-bold">1234</span>
+              </div>
+              <button type="button" onclick="autoFillPin()" class="text-indigo-600 font-semibold hover:text-indigo-800 hover:underline">
+                Use 1234
+              </button>
+            </div>
+
+            ${errorHtml}
+
+            <form id="consent-form" onsubmit="handleConsentSubmit(event)" class="space-y-5">
+              <div>
+                <label for="consentPin" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2 text-center">Enter 4-Digit Consent PIN</label>
+                <div class="max-w-[220px] mx-auto">
+                  <input
+                    type="password"
+                    id="consentPin"
+                    name="consentPin"
+                    maxlength="4"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    autofocus
+                    required
+                    placeholder="••••"
+                    class="pin-digit-input w-full py-3.5 px-4 bg-white border-2 border-slate-300 rounded-xl text-slate-900 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm"
+                  />
+                </div>
+                <p class="text-xs text-slate-400 text-center mt-2">Single 4-digit numeric code</p>
+              </div>
+
+              <div class="pt-2 space-y-2">
+                <button
+                  type="submit"
+                  class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold rounded-xl text-sm shadow-md shadow-indigo-500/25 transition-all transform active:scale-[0.99] flex items-center justify-center space-x-2"
+                >
+                  ${getSvgIcon('shield-check', 'w-4 h-4')}
+                  <span>Verify PIN & Access Record</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="backToLookup()"
+                  class="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-600 font-medium rounded-xl text-xs transition-colors border border-slate-200"
+                >
+                  &larr; Back to Patient Lookup
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- SCREEN 4: HAPPY PAGE (FULL PATIENT RECORD) ---
+    function renderHappyScreen() {
+      const record = MOCK_CONFIG.patientRecord;
+
+      return `
+        <div class="space-y-6 screen-fade">
+
+          <!-- Patient Header Card -->
+          <div class="glass-card rounded-2xl p-6 sm:p-7 border-l-4 border-l-emerald-500">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div class="flex items-start sm:items-center space-x-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
+                  ${record.photoBadge}
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">${record.name}</h1>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                      ID: ${record.id}
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Consent Verified
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 mt-1">
+                    <span><strong class="font-medium text-slate-700">Age:</strong> ${record.age} (${record.dob})</span>
+                    <span>&bull;</span>
+                    <span><strong class="font-medium text-slate-700">Gender:</strong> ${record.gender}</span>
+                    <span>&bull;</span>
+                    <span class="inline-flex items-center gap-1">
+                      <strong class="font-medium text-slate-700">Blood Group:</strong>
+                      <span class="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">${record.bloodGroup}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick action / Status -->
+              <div class="flex items-center gap-2 self-start md:self-auto">
+                <button onclick="restartFlow()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-300 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  <span>New Patient Lookup</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Emergency / Demographics Ribbon -->
+            <div class="mt-5 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs text-slate-600">
+              <div class="flex items-center space-x-2">
+                <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Contact:</span>
+                <span class="font-medium text-slate-800">${record.contact.phone}</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Emergency:</span>
+                <span class="font-medium text-slate-800">${record.contact.emergency}</span>
+              </div>
+              <div class="flex items-center space-x-2 sm:col-span-2 lg:col-span-1">
+                <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Address:</span>
+                <span class="font-medium text-slate-800 truncate">${record.contact.address}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Current Vitals Grid -->
+          <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                  ${getSvgIcon('activity', 'w-4 h-4')}
+                </div>
+                <h3 class="text-base font-bold text-slate-900 tracking-tight">Current Clinical Vitals</h3>
+              </div>
+              <span class="text-xs text-slate-400 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 badge-pulse"></span>
+                Telemetry Synced Today
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              ${record.currentVitals.map(v => `
+                <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-center hover:bg-white hover:border-blue-300 hover:shadow-sm transition-all">
+                  <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">${v.name}</span>
+                  <div class="mt-1 flex items-baseline justify-center gap-1">
+                    <span class="text-xl font-extrabold text-slate-900 font-mono">${v.value}</span>
+                    <span class="text-[10px] text-slate-500 font-medium">${v.unit}</span>
+                  </div>
+                  <div class="mt-2">
+                    <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      ${v.status}
+                    </span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Allergies & Chronic Conditions (2-column layout) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Allergies Card -->
+            <div class="glass-card rounded-2xl p-6">
+              <div class="flex items-center space-x-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                  ${getSvgIcon('alert', 'w-4 h-4')}
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 tracking-tight">Documented Allergies</h3>
+                  <p class="text-xs text-slate-500">Known hypersensitivity alerts</p>
+                </div>
+              </div>
+
+              <div class="space-y-2.5">
+                ${record.allergies.map(a => `
+                  <div class="p-3 rounded-xl border ${a.badge} flex items-start justify-between gap-3">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm">${a.name}</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border bg-white/70">${a.severity}</span>
+                      </div>
+                      <p class="text-xs mt-0.5 opacity-90">${a.reaction}</p>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Chronic Conditions Card -->
+            <div class="glass-card rounded-2xl p-6">
+              <div class="flex items-center space-x-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  ${getSvgIcon('heart', 'w-4 h-4')}
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 tracking-tight">Chronic Conditions</h3>
+                  <p class="text-xs text-slate-500">Ongoing medical diagnoses & monitoring</p>
+                </div>
+              </div>
+
+              <div class="space-y-2.5">
+                ${record.chronicConditions.map(c => `
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-sm text-slate-800">${c.condition}</span>
+                      <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">${c.status}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
+                      <span>Dx Year: ${c.diagnosedYear}</span>
+                      <span class="italic text-slate-600">${c.note}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Visit History -->
+          <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 tracking-tight">Clinical Visit History</h3>
+                  <p class="text-xs text-slate-500">Recent consultations, encounters, and prescribed therapies</p>
+                </div>
+              </div>
+              <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">4 Encounters on File</span>
+            </div>
+
+            <!-- Visits Table / Timeline -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+                    <th class="py-2.5 px-3">Date</th>
+                    <th class="py-2.5 px-3">Department & Clinician</th>
+                    <th class="py-2.5 px-3">Reason / Clinical Notes</th>
+                    <th class="py-2.5 px-3">Medications & Rx</th>
+                    <th class="py-2.5 px-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${record.visitHistory.map(v => `
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                      <td class="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">${v.date}</td>
+                      <td class="py-3 px-3">
+                        <span class="font-bold text-slate-900 block">${v.department}</span>
+                        <span class="text-slate-500">${v.doctor}</span>
+                      </td>
+                      <td class="py-3 px-3">
+                        <span class="font-semibold text-slate-800 block">${v.diagnosis}</span>
+                        <span class="text-slate-500 text-[11px] leading-relaxed">${v.notes}</span>
+                      </td>
+                      <td class="py-3 px-3 font-mono text-[11px] text-indigo-700 bg-indigo-50/40 rounded">
+                        ${v.rx}
+                      </td>
+                      <td class="py-3 px-3 text-right">
+                        <span class="inline-block px-2 py-0.5 rounded-full font-bold text-[10px] ${v.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}">
+                          ${v.status}
+                        </span>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Bottom Prototype Notice -->
+          <div class="text-center py-2">
+            <p class="text-xs text-slate-400">
+              * This Happy Page stands in for the live clinical dashboard. All data loaded in memory.
+            </p>
+          </div>
+
+        </div>
+      `;
+    }
+
+    // --- RENDER CONTROLLER ---
+    function renderApp() {
+      const container = document.getElementById('screen-container');
+      updateStepper();
+
+      if (state.currentScreen === 'login') {
+        container.innerHTML = renderLoginScreen();
+      } else if (state.currentScreen === 'lookup') {
+        container.innerHTML = renderLookupScreen();
+      } else if (state.currentScreen === 'consent') {
+        container.innerHTML = renderConsentScreen();
+      } else if (state.currentScreen === 'happy') {
+        container.innerHTML = renderHappyScreen();
+      }
+    }
+
+    // --- FORM HANDLERS & NAVIGATION ---
+
+    // 1. Login Handler
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const username = form.username.value.trim();
+      const password = form.password.value.trim();
+
+      if (username === MOCK_CONFIG.auth.username && password === MOCK_CONFIG.auth.password) {
+        state.user = { username };
+        state.errors.login = '';
+        state.currentScreen = 'lookup';
+        renderApp();
+      } else {
+        state.errors.login = 'Invalid credentials. Please verify your username and password.';
+        renderApp();
+        // Restore username for user convenience
+        const userField = document.getElementById('username');
+        if (userField) userField.value = username;
+      }
+    }
+
+    // 2. Lookup Handler
+    function handleLookupSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const patientId = form.patientId.value.trim().toUpperCase();
+      state.patientIdInput = patientId;
+
+      if (patientId === MOCK_CONFIG.patientId.toUpperCase()) {
+        state.validatedPatientId = patientId;
+        state.errors.lookup = '';
+        state.currentScreen = 'consent';
+        renderApp();
+      } else {
+        state.errors.lookup = `No matching patient record found for ID "${patientId}". Try demo ID: P001.`;
+        renderApp();
+      }
+    }
+
+    // 3. Consent Handler
+    function handleConsentSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const pin = form.consentPin.value.trim();
+
+      if (pin === MOCK_CONFIG.consentPin) {
+        state.errors.consent = '';
+        state.currentScreen = 'happy';
+        renderApp();
+      } else {
+        // As per prompt specification:
+        // "Wrong PIN: show an inline error ("Incorrect PIN, try again"), clear the field, stay on the page"
+        state.errors.consent = 'Incorrect PIN, try again';
+        renderApp();
+        const pinField = document.getElementById('consentPin');
+        if (pinField) {
+          pinField.value = '';
+          pinField.focus();
+        }
+      }
+    }
+
+    // --- HELPER ACTIONS ---
+    function autoFillLogin() {
+      const userField = document.getElementById('username');
+      const passField = document.getElementById('password');
+      if (userField && passField) {
+        userField.value = MOCK_CONFIG.auth.username;
+        passField.value = MOCK_CONFIG.auth.password;
+      }
+    }
+
+    function autoFillPatientId() {
+      const idField = document.getElementById('patientId');
+      if (idField) {
+        idField.value = MOCK_CONFIG.patientId;
+      }
+    }
+
+    function simulateScan() {
+      const idField = document.getElementById('patientId');
+      if (idField) {
+        idField.value = MOCK_CONFIG.patientId;
+        idField.classList.add('ring-4', 'ring-teal-200');
+        setTimeout(() => {
+          idField.classList.remove('ring-4', 'ring-teal-200');
+          // Automatically trigger lookup
+          document.getElementById('lookup-form').requestSubmit();
+        }, 350);
+      }
+    }
+
+    function autoFillPin() {
+      const pinField = document.getElementById('consentPin');
+      if (pinField) {
+        pinField.value = MOCK_CONFIG.consentPin;
+        pinField.focus();
+      }
+    }
+
+    function togglePasswordVisibility(fieldId) {
+      const field = document.getElementById(fieldId);
+      if (field) {
+        field.type = field.type === 'password' ? 'text' : 'password';
+      }
+    }
+
+    function backToLookup() {
+      state.errors.consent = '';
+      state.currentScreen = 'lookup';
+      renderApp();
+    }
+
+    function handleLogout() {
+      state.user = null;
+      state.currentScreen = 'login';
+      state.patientIdInput = '';
+      state.validatedPatientId = null;
+      state.errors = { login: '', lookup: '', consent: '' };
+      renderApp();
+    }
+
+    function restartFlow() {
+      state.currentScreen = 'lookup';
+      state.patientIdInput = '';
+      state.validatedPatientId = null;
+      state.errors = { login: '', lookup: '', consent: '' };
+      renderApp();
+    }
+
+    // Initialize the app on load
+    document.addEventListener('DOMContentLoaded', () => {
+      renderApp();
+    });
+  </script>
+</body>
+</html>

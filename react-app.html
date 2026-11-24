@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PulseCare HMS (React + Tailwind)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 and ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone for JSX compilation in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      color: #1e293b;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+    }
+    .pin-input {
+      letter-spacing: 0.3em;
+      text-align: center;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const MOCK_DATA = {
+      auth: { username: "iron_man", password: "1234" },
+      patientId: "P001",
+      consentPin: "1234",
+      patientRecord: {
+        id: "P001",
+        name: "Anthony Edward Stark",
+        preferredName: "Tony Stark",
+        age: "48 years",
+        dob: "May 29, 1978",
+        gender: "Male",
+        bloodGroup: "O+",
+        photoBadge: "TS",
+        contact: {
+          phone: "+1 (555) 839-2810",
+          emergency: "Pepper Potts (Spouse) - +1 (555) 839-2811",
+          address: "10880 Malibu Point, Malibu, CA 90265"
+        },
+        allergies: [
+          { name: "Penicillin", severity: "Severe (High Alert)", reaction: "Anaphylaxis & severe angioedema", badge: "bg-rose-100 text-rose-800 border-rose-300" },
+          { name: "Sulfa Antibiotics", severity: "Moderate", reaction: "Generalized urticaria & pruritus", badge: "bg-amber-100 text-amber-800 border-amber-300" },
+          { name: "Radiocontrast Dye", severity: "Mild", reaction: "Flushing, nausea & mild hives", badge: "bg-yellow-100 text-yellow-800 border-yellow-300" }
+        ],
+        chronicConditions: [
+          { condition: "Essential Hypertension", diagnosedYear: "2019", status: "Managed (Stage 1)", note: "Monitored on ACE inhibitor" },
+          { condition: "Cardiac Arrhythmia", diagnosedYear: "2012", status: "Monitored / Stable", note: "Post-thoracic implant follow-up" },
+          { condition: "Mild Obstructive Sleep Apnea", diagnosedYear: "2021", status: "Controlled", note: "CPAP compliance high (>90%)" }
+        ],
+        currentVitals: [
+          { name: "Blood Pressure", value: "118/76", unit: "mmHg", status: "Normal" },
+          { name: "Heart Rate", value: "72", unit: "bpm", status: "Normal Sinus" },
+          { name: "Oxygen Saturation", value: "99%", unit: "SpO2", status: "Optimal" },
+          { name: "Body Temperature", value: "98.6°F", unit: "(37.0°C)", status: "Afebrile" },
+          { name: "Respiratory Rate", value: "16", unit: "breaths/min", status: "Normal" },
+          { name: "Blood Glucose", value: "94", unit: "mg/dL", status: "Fasting Normal" }
+        ],
+        visitHistory: [
+          {
+            date: "Nov 12, 2026",
+            department: "Cardiology",
+            doctor: "Dr. Bruce Banner, MD",
+            diagnosis: "Quarterly Cardiac Evaluation & Stress ECG",
+            notes: "Resting ECG confirmed normal sinus rhythm. Ejection fraction 62%. Stable blood pressure.",
+            rx: "Lisinopril 10mg PO QD, CoQ10 100mg",
+            status: "Completed"
+          },
+          {
+            date: "Aug 04, 2026",
+            department: "Internal Medicine",
+            doctor: "Dr. Stephen Strange, MD",
+            diagnosis: "Annual Comprehensive Executive Health Exam",
+            notes: "Complete metabolic panel, lipid panel, and renal biomarkers within optimal physiological range.",
+            rx: "Standard daily multivitamin",
+            status: "Completed"
+          },
+          {
+            date: "Mar 19, 2026",
+            department: "Pulmonology & Urgent Care",
+            doctor: "Dr. Christine Palmer, MD",
+            diagnosis: "Acute Bronchial Cough & Mild Dyspnea",
+            notes: "Chest radiographs negative. Resolved viral upper respiratory episode with reactive airway response.",
+            rx: "Albuterol sulfate HFA inhaler (completed)",
+            status: "Resolved"
+          },
+          {
+            date: "Nov 15, 2025",
+            department: "Orthopedic Surgery & Sports Medicine",
+            doctor: "Dr. Helen Cho, MD",
+            diagnosis: "Left Acromioclavicular Joint Strain",
+            notes: "Soft tissue ultrasound demonstrated Grade 1 AC ligament strain. Rehabilitated with physical therapy.",
+            rx: "Targeted physical therapy protocol",
+            status: "Resolved"
+          }
+        ]
+      }
+    };
+
+    function App() {
+      // Step state: 1: Login, 2: Scan/Lookup, 3: Consent Gate, 4: Happy Page
+      const [step, setStep] = useState(1);
+      const [user, setUser] = useState(null);
+
+      // Form states
+      const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+      const [loginError, setLoginError] = useState('');
+
+      const [patientIdInput, setPatientIdInput] = useState('');
+      const [lookupError, setLookupError] = useState('');
+
+      const [pinInput, setPinInput] = useState('');
+      const [consentError, setConsentError] = useState('');
+
+      // Step 1: Login Handler
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (loginForm.username === MOCK_DATA.auth.username && loginForm.password === MOCK_DATA.auth.password) {
+          setUser({ username: loginForm.username });
+          setLoginError('');
+          setStep(2);
+        } else {
+          setLoginError('Invalid credentials. Please verify your username and password.');
+        }
+      };
+
+      // Step 2: Lookup Handler
+      const handleLookup = (e) => {
+        e.preventDefault();
+        const cleanId = patientIdInput.trim().toUpperCase();
+        if (cleanId === MOCK_DATA.patientId) {
+          setLookupError('');
+          setStep(3);
+        } else {
+          setLookupError(`No matching patient record found for ID "${cleanId}". Try demo ID: P001.`);
+        }
+      };
+
+      // Step 3: Consent Handler
+      const handleConsent = (e) => {
+        e.preventDefault();
+        if (pinInput.trim() === MOCK_DATA.consentPin) {
+          setConsentError('');
+          setStep(4);
+        } else {
+          // As required: show inline error, clear field, stay on page
+          setConsentError('Incorrect PIN, try again');
+          setPinInput('');
+        }
+      };
+
+      const handleRestart = () => {
+        setPatientIdInput('');
+        setLookupError('');
+        setPinInput('');
+        setConsentError('');
+        setStep(2);
+      };
+
+      const handleFullSignOut = () => {
+        setUser(null);
+        setLoginForm({ username: '', password: '' });
+        setLoginError('');
+        setPatientIdInput('');
+        setLookupError('');
+        setPinInput('');
+        setConsentError('');
+        setStep(1);
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+            <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-teal-500 flex items-center justify-center text-white shadow-md">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
+                    PulseCare <span className="text-xs px-2 py-0.5 font-semibold bg-blue-100 text-blue-700 rounded-full">React</span>
+                  </span>
+                  <p className="text-xs text-slate-500 hidden sm:block">Clinical Patient Portal (React + Tailwind)</p>
+                </div>
+              </div>
+
+              {user && (
+                <div className="flex items-center space-x-3">
+                  <div className="text-sm text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span className="font-medium text-slate-800">{user.username}</span>
+                    <span className="text-xs text-slate-400"> | Staff</span>
+                  </div>
+                  <button onClick={handleFullSignOut} className="text-xs text-rose-600 hover:text-rose-700 font-medium px-2 py-1">
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          </header>
+
+          {/* Stepper */}
+          <div className="max-w-4xl mx-auto w-full px-4 pt-6 pb-2">
+            <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-sm mb-4">
+              <div className="flex items-center justify-between relative">
+                <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-200 -z-0"></div>
+                <div
+                  className="absolute left-6 top-1/2 -translate-y-1/2 h-1 bg-blue-600 transition-all duration-300 -z-0"
+                  style={{ width: `${((step - 1) / 3) * 100}%` }}
+                ></div>
+
+                {[
+                  { num: 1, label: '1. Login' },
+                  { num: 2, label: '2. Scan/Lookup' },
+                  { num: 3, label: '3. Consent Gate' },
+                  { num: 4, label: '4. Patient Record' }
+                ].map((s) => {
+                  const isCompleted = step > s.num;
+                  const isActive = step === s.num;
+                  return (
+                    <div key={s.num} className="flex flex-col items-center relative z-10">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          isCompleted
+                            ? 'bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100'
+                            : isActive
+                            ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-md'
+                            : 'bg-white text-slate-400 border-2 border-slate-300'
+                        }`}
+                      >
+                        {isCompleted ? '✓' : s.num}
+                      </div>
+                      <span className={`text-xs mt-1.5 font-medium ${isActive ? 'font-bold text-blue-700' : isCompleted ? 'text-emerald-700' : 'text-slate-400'}`}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Screens */}
+          <main className="flex-grow flex items-center justify-center px-4 py-4 sm:py-8">
+            <div className="w-full max-w-4xl">
+              {/* Screen 1: Login */}
+              {step === 1 && (
+                <div className="max-w-md mx-auto">
+                  <div className="glass-card rounded-2xl p-6 sm:p-8">
+                    <div className="text-center mb-6">
+                      <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-3 border border-blue-100">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Staff Provider Login</h2>
+                      <p className="text-sm text-slate-500 mt-1">Authenticate to access clinical records</p>
+                    </div>
+
+                    <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                      <div>
+                        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 font-semibold rounded mr-1.5">Demo</span>
+                        <span>User: <strong className="font-mono text-slate-900">iron_man</strong> &bull; Pass: <strong className="font-mono text-slate-900">1234</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLoginForm({ username: 'iron_man', password: '1234' })}
+                        className="text-blue-600 font-semibold hover:underline"
+                      >
+                        Auto-fill
+                      </button>
+                    </div>
+
+                    {loginError && (
+                      <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-medium">
+                        ⚠️ {loginError}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Username</label>
+                        <input
+                          type="text"
+                          required
+                          value={loginForm.username}
+                          onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                          placeholder="iron_man"
+                          className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Password</label>
+                        <input
+                          type="password"
+                          required
+                          value={loginForm.password}
+                          onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                          placeholder="••••"
+                          className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-md transition-all active:scale-[0.99]"
+                      >
+                        Authenticate & Continue &rarr;
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Screen 2: Lookup */}
+              {step === 2 && (
+                <div className="max-w-md mx-auto">
+                  <div className="glass-card rounded-2xl p-6 sm:p-8">
+                    <div className="text-center mb-6">
+                      <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl mx-auto flex items-center justify-center mb-3 border border-teal-100">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Identification</h2>
+                      <p className="text-sm text-slate-500 mt-1">Enter patient identification code</p>
+                    </div>
+
+                    <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                      <div>
+                        <span className="px-1.5 py-0.5 bg-teal-100 text-teal-800 font-semibold rounded mr-1.5">Demo Patient ID</span>
+                        <strong className="font-mono text-slate-900">P001</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPatientIdInput('P001')}
+                        className="text-teal-600 font-semibold hover:underline"
+                      >
+                        Use P001
+                      </button>
+                    </div>
+
+                    {lookupError && (
+                      <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-medium">
+                        ⚠️ {lookupError}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleLookup} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Patient ID</label>
+                        <input
+                          type="text"
+                          required
+                          value={patientIdInput}
+                          onChange={(e) => setPatientIdInput(e.target.value)}
+                          placeholder="e.g. P001"
+                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-mono text-base font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm shadow-md transition-all active:scale-[0.99]"
+                      >
+                        Look up Patient &rarr;
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Screen 3: Consent Gate */}
+              {step === 3 && (
+                <div className="max-w-md mx-auto">
+                  <div className="glass-card rounded-2xl p-6 sm:p-8">
+                    <div className="text-center mb-6">
+                      <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl mx-auto flex items-center justify-center mb-3 border border-indigo-100">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Consent Verification</h2>
+                      <p className="text-sm text-slate-500 mt-1">Authorizing release for Patient <strong className="font-mono text-indigo-700">P001</strong></p>
+                    </div>
+
+                    <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                      <div>
+                        <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 font-semibold rounded mr-1.5">Demo PIN</span>
+                        <strong className="font-mono text-slate-900">1234</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPinInput('1234')}
+                        className="text-indigo-600 font-semibold hover:underline"
+                      >
+                        Use 1234
+                      </button>
+                    </div>
+
+                    {consentError && (
+                      <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-medium">
+                        ⚠️ {consentError}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleConsent} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2 text-center">Enter 4-Digit PIN</label>
+                        <div className="max-w-[200px] mx-auto">
+                          <input
+                            type="password"
+                            maxLength="4"
+                            autoFocus
+                            required
+                            value={pinInput}
+                            onChange={(e) => setPinInput(e.target.value)}
+                            placeholder="••••"
+                            className="pin-input w-full py-3 px-4 bg-white border-2 border-slate-300 rounded-xl text-slate-900 text-2xl font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-md transition-all active:scale-[0.99]"
+                      >
+                        Verify PIN & Release Record &rarr;
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { setConsentError(''); setStep(2); }}
+                        className="w-full py-2 text-xs text-slate-500 hover:text-slate-800"
+                      >
+                        &larr; Back to Patient Lookup
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Screen 4: Happy Page */}
+              {step === 4 && (
+                <div className="space-y-6">
+                  {/* Header Card */}
+                  <div className="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-xl flex items-center justify-center shadow-lg">
+                          {MOCK_DATA.patientRecord.photoBadge}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-extrabold text-slate-900">{MOCK_DATA.patientRecord.name}</h1>
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                              ID: {MOCK_DATA.patientRecord.id}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                              ✓ Consent Verified
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mt-1">
+                            <span><strong>Age:</strong> {MOCK_DATA.patientRecord.age}</span>
+                            <span>&bull;</span>
+                            <span><strong>Gender:</strong> {MOCK_DATA.patientRecord.gender}</span>
+                            <span>&bull;</span>
+                            <span><strong>Blood Group:</strong> <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">{MOCK_DATA.patientRecord.bloodGroup}</span></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleRestart}
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 self-start md:self-auto"
+                      >
+                        New Lookup
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Vitals Grid */}
+                  <div className="glass-card rounded-2xl p-6">
+                    <h3 className="text-base font-bold text-slate-900 mb-4">Current Vitals</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                      {MOCK_DATA.patientRecord.currentVitals.map((v, i) => (
+                        <div key={i} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">{v.name}</span>
+                          <div className="mt-1 flex items-baseline justify-center gap-1">
+                            <span className="text-xl font-extrabold text-slate-900 font-mono">{v.value}</span>
+                            <span className="text-[10px] text-slate-500">{v.unit}</span>
+                          </div>
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 mt-2">
+                            {v.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Allergies & Chronic Conditions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="glass-card rounded-2xl p-6">
+                      <h3 className="text-base font-bold text-slate-900 mb-4">Allergies</h3>
+                      <div className="space-y-2.5">
+                        {MOCK_DATA.patientRecord.allergies.map((a, i) => (
+                          <div key={i} className={`p-3 rounded-xl border ${a.badge}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm">{a.name}</span>
+                              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border bg-white/70">{a.severity}</span>
+                            </div>
+                            <p className="text-xs mt-0.5 opacity-90">{a.reaction}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="glass-card rounded-2xl p-6">
+                      <h3 className="text-base font-bold text-slate-900 mb-4">Chronic Conditions</h3>
+                      <div className="space-y-2.5">
+                        {MOCK_DATA.patientRecord.chronicConditions.map((c, i) => (
+                          <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-sm text-slate-800">{c.condition}</span>
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">{c.status}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                              <span>Dx Year: {c.diagnosedYear}</span>
+                              <span className="italic text-slate-600">{c.note}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visit History */}
+                  <div className="glass-card rounded-2xl p-6">
+                    <h3 className="text-base font-bold text-slate-900 mb-4">Visit History</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px]">
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Department & Doctor</th>
+                            <th className="py-2.5 px-3">Diagnosis / Notes</th>
+                            <th className="py-2.5 px-3">Medications</th>
+                            <th className="py-2.5 px-3 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {MOCK_DATA.patientRecord.visitHistory.map((v, i) => (
+                            <tr key={i} className="hover:bg-slate-50">
+                              <td className="py-3 px-3 font-semibold whitespace-nowrap">{v.date}</td>
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-slate-900 block">{v.department}</span>
+                                <span className="text-slate-500">{v.doctor}</span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="font-semibold text-slate-800 block">{v.diagnosis}</span>
+                                <span className="text-slate-500 text-[11px] leading-relaxed">{v.notes}</span>
+                              </td>
+                              <td className="py-3 px-3 font-mono text-[11px] text-indigo-700 bg-indigo-50/40 rounded">{v.rx}</td>
+                              <td className="py-3 px-3 text-right">
+                                <span className={`inline-block px-2 py-0.5 rounded-full font-bold text-[10px] ${v.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>
+                                  {v.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
